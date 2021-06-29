@@ -8,20 +8,24 @@
 
 --For Dates in Wrong Date format:
 --Used =DATE(YEAR(Col),DAY(Col),MONTH(Col)) function to convert into proper format from DD/MM/YY to MM/DD/YY
---Then converted date into Excel number format by =DATEVALUE() function and used TEXT(datevalue,”YYYY”), TEXT(datevalue,”MMMM”), TEXT(datevalue,”DDDD”) to extract year, month and day data from it
+--Then converted date into Excel number format by =DATEVALUE() function and used TEXT(datevalue,”YYYY”), TEXT(datevalue,”MMMM”), TEXT(datevalue,”DDDD”) 
+--to extract year, month and day data from it.
 
 --For Dates in General number format:
---separated each date value in DD/MM/YY, using delimiter ‘/’. Then used Excel concat function line =CONCAT(MM,’/’,DD,’/’,YY) to get the date format and again used DATEVALUE() and TEXT() functions to get the exact date values.
---At last, used the =VLOOKUP() function to copy these year, month and day data(for both different date formats) at the required places after matching with the main Date column in DD/MM/YY format, to form 3 new features with labels ‘YEAR’, ’MONTH’ and ‘DAY’, which will be very useful at later stages while analyzing and visualizing this Covid data.
+--separated each date value in DD/MM/YY, using delimiter ‘/’. Then used Excel concat function line =CONCAT(MM,’/’,DD,’/’,YY) to get the date format and 
+--again used DATEVALUE() and TEXT() functions to get the exact date values.
+--At last, used the =VLOOKUP() function to copy these year, month and day data(for both different date formats) at the required places after matching 
+--with the main Date column in DD/MM/YY format, to form 3 new features with labels ‘YEAR’, ’MONTH’ and ‘DAY’, which will be very useful at later stages
+--while analyzing and visualizing this Covid data.
 
 --The SQL Queries are implemented in Microsoft SQL Server.
 
 USE CovidIndia;
 
 SELECT * FROM covidCase;
-SELECT * FROM vaccineIndia;
-SELECT * FROM vaccineState;
-SELECT * FROM testingState;
+
+EXEC sp_help covidCase;
+select Date, State, Cured, Deaths, Confirmed from covidCase;
 
 --Data Cleaning
 DELETE FROM covidCase where State = 'Cases being reassigned to states';
@@ -42,7 +46,7 @@ ALTER TABLE covidCase
 UPDATE covidCase 
 	SET Active = (Confirmed-Deaths-Cured);
 
---#Total State-wise Confirmed cases till date
+--1) Total State-wise Confirmed cases till date
 SELECT  State,
 		MAX(Confirmed) AS TotalCases 
 FROM covidCase 
@@ -52,7 +56,7 @@ ORDER BY TotalCases DESC;
 ----Most Corona Cases have appeared in Maharashtra and least in Andaman&Nicobar till date 
 
 
---#State-Wise Maximum Active Cases in a day
+--2) State-Wise Maximum Active Cases in a day
 WITH cte AS
 (SELECT  Date,
 		 State,
@@ -120,62 +124,62 @@ WHERE covidCase.Date = v_deaths.Date
 AND covidCase.State = v_deaths.State; 
 
 
---#Maximum Per-Day Confirmed case per State
+--3) Maximum Per-Day Confirmed case per State
 SELECT  State,
-		MaxPerDay,
+		MaxPerDayConfirmed,
 		Date,
 		Month
 FROM
 (SELECT  Date,
 		 State,
 		 Month,
-		 MAX(PerDayConfirmed) OVER (PARTITION BY State) AS MaxPerDay,
+		 MAX(PerDayConfirmed) OVER (PARTITION BY State) AS MaxPerDayConfirmed,
 		 DENSE_RANK() OVER (PARTITION BY State ORDER BY PerDayConfirmed desc) AS HighestConfirmed
 FROM covidCase) cte
 WHERE HighestConfirmed = 1 
-ORDER BY MaxPerDay DESC;
+ORDER BY MaxPerDayConfirmed DESC;
 
 --Maharashtra(68631) recorded the highest number of cases in a single day on 19th April,2021 followed by Karnataka(50112) on 6th May,2021 and Kerala(43529) on 13th May,2021
 --while Andaman&Nicobar(149) recorded the minimum number of per day Max confirmed cases on 15th Aug, 2020
 
 
---#Maximum Per-Day Deaths case per State
+--4) Maximum Per-Day Deaths case per State
 SELECT  State,
-		MaxPerDay,
+		MaxPerDayDeaths,
 		Date,
 		Month
 FROM
 (SELECT  Date,
 		 State,
 		 Month,
-		 MAX(PerDayDeaths) OVER (PARTITION BY State) AS MaxPerDay,
+		 MAX(PerDayDeaths) OVER (PARTITION BY State) AS MaxPerDayDeaths,
 		 DENSE_RANK() OVER (PARTITION BY State ORDER BY PerDayDeaths desc) AS HighestDeaths
 FROM covidCase) cte
 WHERE HighestDeaths = 1 
-ORDER BY MaxPerDay DESC;
+ORDER BY MaxPerDayDeaths DESC;
 
 --Bihar(3971) registered most number of Deaths in any single day on 10th June,2021 followed by Maharashtra(2771) on 14th June, 2021 and Karnataka(624) on 24th May, 2021.
 
 
---#Maximum Per-Day Cured case per State
+--5) Maximum Per-Day Cured case per State
 SELECT  State,
-		MaxPerDay,
 		Date,
-		Month
+		Month,
+		CAST(MaxPerDayCure AS int) AS MaxPerDayCured
 FROM
-(SELECT  Date,
-		 State,
+(SELECT  State,
+		 Date,
 		 Month,
-		 MAX(PerDayCured) OVER (PARTITION BY State) AS MaxPerDay,
+		 MAX(PerDayCured) OVER (PARTITION BY State) AS MaxPerDayCure,
 		 DENSE_RANK() OVER (PARTITION BY State ORDER BY PerDayDeaths desc) AS HighestCured
 FROM covidCase) cte
 WHERE HighestCured = 1 
-ORDER BY MaxPerDay DESC;
+ORDER BY MaxPerDayCured DESC;
 
 --Highest number of cured cases per day was recorded in Kerala(99651) on 7th June, 2021 followed by Maharashtra(82266) and Karnataka(61766).
 
 
---#Calculating the State-wise Mortality Rate
+--6) Calculating the State-wise Mortality Rate
 WITH cte AS
 (SELECT  State,
 		Max(Deaths) as Deaths,
@@ -190,7 +194,7 @@ ORDER BY DeathRate DESC;
 --This shows till now, Punjab(2.68%) has the highest Patient Mortality Rate in the country followed by Uttarakhand(2.08%) and Maharashtra(1.99%), while state of
 --Kerala(0.44%) and Odisha(0.42%) are among the lowest.
 
---#Calculating the State-wise Cured Ratio
+--7) Calculating the State-wise Cured Ratio
 WITH cte AS
 (SELECT  State,
 		Max(Cured) as Cured,
@@ -206,7 +210,7 @@ ORDER BY CuredRate DESC;
 --while Mizoram(75.69%) has the lowest.
 
 
---#Calculating day-wise highest PerDayConfirmed Cases
+--8) Calculating day-wise highest PerDayConfirmed Cases
 SELECT  DAY,
 		SUM(PerDayConfirmed) AS TotalCases
 FROM covidCase
@@ -216,7 +220,7 @@ ORDER BY TotalCases DESC;
 --Maximum Total number of cases all over India arose on Thursday
 
 
---#Finding the 'Time' when Covid Waves attacked the capital city 'Delhi'
+--9) Finding the 'Time' when Covid Waves attacked the capital city 'Delhi'
 WITH monthlySpike AS
 (SELECT  State,
 		 Date,
@@ -238,7 +242,7 @@ ORDER BY Date;
 --From this we can conclude, in Delhi, the 1st Wave came around in June,2020, 2nd Wave in November and 3rd Wave in April which was the most severe of all.
 
 
---#Finding the 'Time' when Mortality Rate was highest in the capital 'Delhi'
+--10) Finding the 'Time' when Mortality Rate was highest in the capital 'Delhi'
 WITH monthlySpike AS
 (SELECT  State,
 		 Date,
