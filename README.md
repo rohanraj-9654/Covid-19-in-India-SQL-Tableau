@@ -10,3 +10,5 @@ Tableau Dashboard of Covid-19 Cases in India - made using the insights generated
 Tableau Dashboard of Covid-19 Vaccinations in India
 
 ![image](https://user-images.githubusercontent.com/45537352/124031285-bec95a00-da14-11eb-8b5a-b6dd7629e00d.png)
+
+For better understanding of created Dashboards, visit my Tableau Public profile - https://public.tableau.com/profile/rohan.raj4726#!/
