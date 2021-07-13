@@ -298,3 +298,11 @@ SELECT  State,
 		CEILING((perDayCase/handle) *100) AS PercentSpike
 FROM HnadleNull
 ORDER BY PercentSpike DESC;
+
+
+--11) Last 5 day Active cases from each date for state 'DELHI'
+SELECT  Date,
+		Active,
+		sum(Active) over (order by Date Rows 4 preceding) as Last5dayActiveCases
+FROM covidCase 
+where State='Delhi';
